@@ -2,16 +2,19 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from os import path, makedirs
 from flask_login import LoginManager
+from flask_migrate import Migrate
 
-db = SQLAlchemy()
+db = SQLAlchemy()  # Initialize SQLAlchemy outside of the create_app function
+migrate = Migrate()  # Initialize Migrate outside of the create_app function
 DB_NAME = "database.db"
-
 
 def create_app():
     app = Flask(__name__)
     app.config['SECRET_KEY'] = "helloworld"  # Consider using environment variables
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
-    db.init_app(app)
+
+    db.init_app(app)  # Initialize SQLAlchemy with the app
+    migrate.init_app(app, db)  # Initialize Migrate with the app and db
 
     # Register blueprints
     from .views import views
@@ -35,7 +38,6 @@ def create_app():
         return User.query.get(int(id))
 
     return app
-
 
 def create_database(app):
     # Ensure the directory for the database file exists

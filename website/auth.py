@@ -3,6 +3,7 @@ from . import db
 from .models import User
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+import re
 
 auth = Blueprint("auth", __name__)
 
@@ -14,8 +15,11 @@ def login():
         password = request.form.get("password")
 
         user = User.query.filter_by(email=email).first()
+
         if user:
-            if check_password_hash(user.password, password):
+            if not user.is_active:
+                flash('Your account is suspended.', category='error')
+            elif check_password_hash(user.password, password):
                 flash("Logged in!", category='success')
                 login_user(user, remember=True)
                 return redirect(url_for('views.home'))
@@ -38,7 +42,10 @@ def sign_up():
         email_exists = User.query.filter_by(email=email).first()
         username_exists = User.query.filter_by(username=username).first()
 
-        if email_exists:
+        # Password complexity requirements
+        if not re.match(r'^[\w-]+$', username):
+            flash('Username must contain only letters, numbers, and underscores.', category='error')
+        elif email_exists:
             flash('Email is already in use.', category='error')
         elif username_exists:
             flash('Username is already in use.', category='error')
@@ -48,13 +55,15 @@ def sign_up():
             flash('Username is too short.', category='error')
         elif len(password1) < 6:
             flash('Password is too short.', category='error')
+        elif not re.search(r'[A-Za-z]', password1) or not re.search(r'\d', password1):
+            flash('Password must contain both letters and numbers.', category='error')
         elif len(email) < 4:
             flash("Email is invalid.", category='error')
         else:
             new_user = User(
                 email=email,
                 username=username,
-                password=generate_password_hash(password1, method='pbkdf2:sha256')  # Fixed method
+                password=generate_password_hash(password1, method='pbkdf2:sha256')
             )
             db.session.add(new_user)
             db.session.commit()
